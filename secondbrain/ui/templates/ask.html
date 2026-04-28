@@ -3,15 +3,28 @@
 {% block content %}
 <h1>Ask the Vault</h1>
 
-<form action="/ask" method="post">
+<form action="/ask" method="post" id="ask-form">
     <div class="form-group">
         <label for="question">Question</label>
         <input type="text" name="question" id="question"
                placeholder="What do I know about event sourcing?"
                value="{{ question or '' }}" autofocus required>
     </div>
-    <button type="submit">Ask</button>
+    <button type="submit" id="ask-btn">Ask</button>
+    <span id="loading" style="display:none; margin-left: 12px; color: var(--yellow);">
+        Thinking... this may take a moment while the LLM processes your question.
+    </span>
 </form>
+
+{% if error %}
+<div class="answer-box" style="border-color: var(--red); margin-top: 20px;">
+    <div style="color: var(--red); font-weight: 600; margin-bottom: 8px;">Error</div>
+    <div style="color: var(--text-muted);">{{ error }}</div>
+    <div style="color: var(--text-muted); font-size: 0.85em; margin-top: 10px;">
+        Check that your LLM endpoint is reachable in <a href="/settings">Settings</a>.
+    </div>
+</div>
+{% endif %}
 
 {% if answer %}
 <div class="answer-box">
@@ -46,4 +59,11 @@
     {% endfor %}
 </div>
 {% endif %}
+
+<script>
+document.getElementById('ask-form').addEventListener('submit', function() {
+    document.getElementById('ask-btn').disabled = true;
+    document.getElementById('loading').style.display = 'inline';
+});
+</script>
 {% endblock %}

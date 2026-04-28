@@ -272,19 +272,32 @@ async def ask_form(request: Request):
 
 @app.post("/ask", response_class=HTMLResponse)
 async def ask_endpoint(request: Request, question: str = Form(...)):
-    from secondbrain.query.engine import ask_vault, search_vault
+    from secondbrain.query.engine import Answer, ask_vault, search_vault
 
     vault = _vault()
     db = _db()
-    llm = _llm()
-    answer = ask_vault(question, vault, db, llm)
-    search_results = search_vault(question, vault, db)
+    search_results = []
+    answer = None
+    error = None
+
+    try:
+        llm = _llm()
+        answer = ask_vault(question, vault, db, llm)
+        search_results = search_vault(question, vault, db)
+    except Exception as e:
+        error = str(e)
+        # Still try to get search results even if LLM fails
+        try:
+            search_results = search_vault(question, vault, db)
+        except Exception:
+            pass
 
     return templates.TemplateResponse("ask.html", {
         "request": request,
         "question": question,
         "answer": answer,
         "search_results": search_results,
+        "error": error,
     })
 
 
