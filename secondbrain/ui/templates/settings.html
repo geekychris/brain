@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Settings — VaultForge{% endblock %}
+{% block content %}
+<h1>LLM Configuration</h1>
+
+<style>
+    .config-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+    .config-card.active {
+        border-color: var(--green);
+        box-shadow: 0 0 0 1px var(--green);
+    }
+    .config-card .config-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .config-card .config-name {
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+    .config-card .config-detail {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 6px 12px;
+        font-size: 0.9em;
+    }
+    .config-card .config-detail .label { color: var(--text-muted); }
+    .config-card .config-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    .active-badge {
+        background: #1f3d1a;
+        color: var(--green);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    .btn-sm {
+        padding: 6px 14px;
+        font-size: 0.85em;
+    }
+    .btn-danger {
+        background: transparent;
+        border: 1px solid var(--red);
+        color: var(--red);
+    }
+    .btn-danger:hover { background: var(--red); color: var(--bg); }
+    .probe-result {
+        margin-top: 10px;
+        padding: 12px;
+        border-radius: var(--radius);
+        font-size: 0.9em;
+        display: none;
+    }
+    .probe-result.show { display: block; }
+    .probe-result.success { background: #1f3d1a; border: 1px solid var(--green); }
+    .probe-result.error { background: #3d1a1a; border: 1px solid var(--red); }
+    .model-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .model-option {
+        padding: 6px 12px;
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        cursor: pointer;
+        font-size: 0.85em;
+        font-family: monospace;
+        transition: all 0.15s;
+    }
+    .model-option:hover { border-color: var(--accent); color: var(--accent); }
+    .model-option.selected { border-color: var(--green); color: var(--green); background: #1f3d1a; }
+    .test-result {
+        margin-top: 8px;
+        font-size: 0.85em;
+        padding: 8px 12px;
+        border-radius: var(--radius);
+        display: none;
+    }
+    .test-result.show { display: block; }
+    .test-result.success { background: #1f3d1a; color: var(--green); }
+    .test-result.error { background: #3d1a1a; color: var(--red); }
+</style>
+
+<h2>Saved Configurations</h2>
+
+{% if configs %}
+    {% for config in configs %}
+    <div class="config-card {% if config.id == active_id %}active{% endif %}">
+        <div class="config-header">
+            <span class="config-name">{{ config.name }}</span>
+            {% if config.id == active_id %}
+                <span class="active-badge">Active</span>
+            {% endif %}
+        </div>
+        <div class="config-detail">
+            <span class="label">Backend:</span>
+            <span>{{ config.backend_type }}</span>
+            <span class="label">URL:</span>
+            <span style="font-family: monospace;">{{ config.base_url }}</span>
+            <span class="label">Model:</span>
+            <span style="font-family: monospace;">{{ config.model }}</span>
+        </div>
+        <div class="config-actions">
+            {% if config.id != active_id %}
+            <form action="/settings/config/{{ config.id }}/activate" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-sm btn-green">Activate</button>
+            </form>
+            {% endif %}
+            <button class="btn btn-sm btn-outline" onclick="editConfig('{{ config.id }}', '{{ config.name }}', '{{ config.backend_type }}', '{{ config.base_url }}', '{{ config.model }}')">Edit</button>
+            <form action="/settings/config/{{ config.id }}/delete" method="post" style="display: inline;"
+                  onsubmit="return confirm('Delete this configuration?')">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state" style="padding: 30px;">
+        <p>No LLM configurations saved yet.</p>
+    </div>
+{% endif %}
+
+<h2 id="config-form-title">Add New Configuration</h2>
+
+<div class="card">
+    <form id="config-form" action="/settings/config" method="post">
+        <input type="hidden" name="config_id" id="config_id" value="">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label for="name">Configuration Name</label>
+                <input type="text" name="name" id="config-name" placeholder="e.g. Local Nemotron" required>
+            </div>
+            <div class="form-group">
+                <label for="backend_type">Backend Type</label>
+                <select name="backend_type" id="backend-type">
+                    <option value="llamacpp">llama.cpp / vLLM / OpenAI-compatible</option>
+                    <option value="ollama">Ollama</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="base_url">Server URL</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="url" name="base_url" id="base-url" placeholder="http://localhost:30000" required style="flex: 1;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="probeEndpoint()">Probe for Models</button>
+            </div>
+        </div>
+
+        <div id="probe-result" class="probe-result"></div>
+
+        <div class="form-group">
+            <label for="model">Model</label>
+            <input type="text" name="model" id="model-name" placeholder="Model name or ID" required>
+            <div id="model-list" class="model-list"></div>
+        </div>
+
+        <div id="test-result" class="test-result"></div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" class="btn">Save Configuration</button>
+            <button type="button" class="btn btn-outline" onclick="testConfig()">Test Connection</button>
+            <button type="button" class="btn btn-outline" onclick="resetForm()" style="display: none;" id="cancel-edit">Cancel Edit</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function probeEndpoint() {
+    const url = document.getElementById('base-url').value;
+    const backend = document.getElementById('backend-type').value;
+    const resultDiv = document.getElementById('probe-result');
+    const modelList = document.getElementById('model-list');
+
+    if (!url) { alert('Enter a server URL first'); return; }
+
+    resultDiv.className = 'probe-result show';
+    resultDiv.style.background = 'var(--bg-hover)';
+    resultDiv.style.border = '1px solid var(--border)';
+    resultDiv.textContent = 'Probing endpoint...';
+    modelList.innerHTML = '';
+
+    const formData = new FormData();
+    formData.append('base_url', url);
+    formData.append('backend_type', backend);
+
+    fetch('/settings/probe', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.reachable) {
+                resultDiv.className = 'probe-result show success';
+                resultDiv.innerHTML = `Connected! Found ${data.models.length} model(s).`;
+
+                data.models.forEach(model => {
+                    const btn = document.createElement('div');
+                    btn.className = 'model-option';
+                    btn.textContent = model;
+                    btn.onclick = () => {
+                        document.querySelectorAll('.model-option').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        document.getElementById('model-name').value = model;
+                    };
+                    modelList.appendChild(btn);
+                });
+
+                // Auto-select first model if model field is empty
+                if (data.models.length > 0 && !document.getElementById('model-name').value) {
+                    document.getElementById('model-name').value = data.models[0];
+                    modelList.firstChild.classList.add('selected');
+                }
+            } else {
+                resultDiv.className = 'probe-result show error';
+                resultDiv.innerHTML = `Could not connect: ${data.error || 'Unknown error'}`;
+            }
+        })
+        .catch(err => {
+            resultDiv.className = 'probe-result show error';
+            resultDiv.innerHTML = `Request failed: ${err}`;
+        });
+}
+
+function testConfig() {
+    const url = document.getElementById('base-url').value;
+    const backend = document.getElementById('backend-type').value;
+    const model = document.getElementById('model-name').value;
+    const resultDiv = document.getElementById('test-result');
+
+    if (!url || !model) { alert('Fill in URL and model first'); return; }
+
+    resultDiv.className = 'test-result show';
+    resultDiv.style.background = 'var(--bg-hover)';
+    resultDiv.style.color = 'var(--text-muted)';
+    resultDiv.textContent = 'Testing...';
+
+    const formData = new FormData();
+    formData.append('base_url', url);
+    formData.append('backend_type', backend);
+    formData.append('model', model);
+
+    fetch('/settings/test', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                resultDiv.className = 'test-result show success';
+                resultDiv.innerHTML = `Model responded: "${data.response}"`;
+            } else {
+                resultDiv.className = 'test-result show error';
+                resultDiv.innerHTML = `Test failed: ${data.error}`;
+            }
+        })
+        .catch(err => {
+            resultDiv.className = 'test-result show error';
+            resultDiv.innerHTML = `Request failed: ${err}`;
+        });
+}
+
+function editConfig(id, name, backend, url, model) {
+    document.getElementById('config_id').value = id;
+    document.getElementById('config-name').value = name;
+    document.getElementById('backend-type').value = backend;
+    document.getElementById('base-url').value = url;
+    document.getElementById('model-name').value = model;
+    document.getElementById('config-form-title').textContent = 'Edit Configuration';
+    document.getElementById('cancel-edit').style.display = 'inline-block';
+    document.getElementById('config-form-title').scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetForm() {
+    document.getElementById('config_id').value = '';
+    document.getElementById('config-name').value = '';
+    document.getElementById('base-url').value = '';
+    document.getElementById('model-name').value = '';
+    document.getElementById('config-form-title').textContent = 'Add New Configuration';
+    document.getElementById('cancel-edit').style.display = 'none';
+    document.getElementById('probe-result').className = 'probe-result';
+    document.getElementById('test-result').className = 'test-result';
+    document.getElementById('model-list').innerHTML = '';
+}
+</script>
+{% endblock %}

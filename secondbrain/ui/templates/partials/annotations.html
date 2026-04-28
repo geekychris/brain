@@ -1,0 +1,222 @@
+<style>
+    .anno-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 15px;
+    }
+    .star-btn {
+        background: none; border: none; font-size: 1.4em;
+        cursor: pointer; padding: 2px 6px; transition: transform 0.15s;
+    }
+    .star-btn:hover { transform: scale(1.2); }
+    .star-btn.starred { color: #e0af68; }
+    .star-btn:not(.starred) { color: var(--text-muted); }
+    .anno-section { display: flex; align-items: center; gap: 6px; }
+    .anno-section label { color: var(--text-muted); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; }
+    .anno-tags {
+        display: flex; gap: 4px; flex-wrap: wrap; align-items: center;
+    }
+    .anno-tag {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 3px 8px; border-radius: 4px; font-size: 0.8em;
+        cursor: default;
+    }
+    .anno-tag.label-tag { background: rgba(187, 154, 247, 0.15); color: var(--purple); }
+    .anno-tag.user-tag { background: rgba(122, 162, 247, 0.15); color: var(--accent); }
+    .anno-tag .remove-tag {
+        cursor: pointer; margin-left: 2px; color: var(--text-muted);
+        font-weight: 600; font-size: 1.1em;
+    }
+    .anno-tag .remove-tag:hover { color: var(--red); }
+    .add-tag-input {
+        padding: 3px 8px; border: 1px dashed var(--border); border-radius: 4px;
+        background: none; color: var(--text); font-size: 0.8em; width: 100px;
+        font-family: inherit;
+    }
+    .add-tag-input:focus { outline: none; border-color: var(--accent); }
+    .summarize-btn {
+        padding: 6px 14px; background: var(--purple); color: var(--bg);
+        border: none; border-radius: var(--radius); font-size: 0.85em;
+        cursor: pointer; font-weight: 600; transition: opacity 0.15s;
+    }
+    .summarize-btn:hover { opacity: 0.85; }
+    .summarize-btn:disabled { opacity: 0.5; cursor: wait; }
+    .summary-box {
+        background: var(--bg-surface); border: 1px solid var(--purple);
+        border-radius: var(--radius); padding: 16px; margin-bottom: 15px;
+        line-height: 1.7; font-size: 0.9em; display: none;
+    }
+    .summary-box.show { display: block; }
+    .summary-box h4 { color: var(--purple); margin-bottom: 8px; font-size: 0.9em; }
+</style>
+
+{% if note %}
+<div class="anno-bar" id="anno-bar">
+    <!-- Star -->
+    <button class="star-btn {% if annotation and annotation.starred %}starred{% endif %}"
+            onclick="toggleStar()" id="star-btn" title="Star this note">
+        {% if annotation and annotation.starred %}&#9733;{% else %}&#9734;{% endif %}
+    </button>
+
+    <!-- Labels -->
+    <div class="anno-section">
+        <label>Labels:</label>
+        <div class="anno-tags" id="label-tags">
+            {% if annotation and annotation.labels %}
+                {% for l in annotation.labels.split(',') %}
+                    {% if l.strip() %}
+                    <span class="anno-tag label-tag">{{ l.strip() }}
+                        <span class="remove-tag" onclick="removeLabel('{{ l.strip() }}')">&times;</span>
+                    </span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            <input class="add-tag-input" id="add-label" placeholder="+ label"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addLabel(this.value);this.value='';}"
+                   list="label-suggestions">
+            <datalist id="label-suggestions">
+                {% for lbl, cnt in all_labels %}
+                <option value="{{ lbl }}">
+                {% endfor %}
+            </datalist>
+        </div>
+    </div>
+
+    <!-- User Tags -->
+    <div class="anno-section">
+        <label>Tags:</label>
+        <div class="anno-tags" id="user-tag-tags">
+            {% if annotation and annotation.user_tags %}
+                {% for t in annotation.user_tags.split(',') %}
+                    {% if t.strip() %}
+                    <span class="anno-tag user-tag">#{{ t.strip() }}
+                        <span class="remove-tag" onclick="removeUserTag('{{ t.strip() }}')">&times;</span>
+                    </span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            <input class="add-tag-input" id="add-user-tag" placeholder="+ tag"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addUserTag(this.value);this.value='';}"
+                   list="user-tag-suggestions">
+            <datalist id="user-tag-suggestions">
+                {% for tg, cnt in all_user_tags %}
+                <option value="{{ tg }}">
+                {% endfor %}
+            </datalist>
+        </div>
+    </div>
+
+    <!-- Summarize -->
+    <button class="summarize-btn" onclick="summarizeNote()" id="summarize-btn">
+        {% if annotation and annotation.summary %}Re-summarize{% else %}Summarize{% endif %}
+    </button>
+</div>
+
+<!-- Summary display -->
+<div class="summary-box {% if annotation and annotation.summary %}show{% endif %}" id="summary-box">
+    <h4>AI Summary</h4>
+    <div id="summary-text">{% if annotation and annotation.summary %}{{ annotation.summary }}{% endif %}</div>
+</div>
+
+<script>
+const noteId = '{{ note.id }}';
+
+function toggleStar() {
+    fetch(`/api/note/${noteId}/star`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            const btn = document.getElementById('star-btn');
+            btn.classList.toggle('starred', data.starred);
+            btn.innerHTML = data.starred ? '&#9733;' : '&#9734;';
+        });
+}
+
+function getCurrentLabels() {
+    return [...document.querySelectorAll('#label-tags .label-tag')]
+        .map(el => el.textContent.replace('×', '').trim())
+        .filter(Boolean);
+}
+
+function getCurrentUserTags() {
+    return [...document.querySelectorAll('#user-tag-tags .user-tag')]
+        .map(el => el.textContent.replace('#', '').replace('×', '').trim())
+        .filter(Boolean);
+}
+
+function addLabel(val) {
+    val = val.trim();
+    if (!val) return;
+    const labels = getCurrentLabels();
+    if (!labels.includes(val)) labels.push(val);
+    saveLabels(labels);
+}
+
+function removeLabel(val) {
+    const labels = getCurrentLabels().filter(l => l !== val);
+    saveLabels(labels);
+}
+
+function saveLabels(labels) {
+    fetch(`/api/note/${noteId}/labels`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ labels }),
+    }).then(() => location.reload());
+}
+
+function addUserTag(val) {
+    val = val.trim();
+    if (!val) return;
+    const tags = getCurrentUserTags();
+    if (!tags.includes(val)) tags.push(val);
+    saveUserTags(tags);
+}
+
+function removeUserTag(val) {
+    const tags = getCurrentUserTags().filter(t => t !== val);
+    saveUserTags(tags);
+}
+
+function saveUserTags(tags) {
+    fetch(`/api/note/${noteId}/user_tags`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ user_tags: tags }),
+    }).then(() => location.reload());
+}
+
+function summarizeNote() {
+    const btn = document.getElementById('summarize-btn');
+    const box = document.getElementById('summary-box');
+    const text = document.getElementById('summary-text');
+
+    btn.disabled = true;
+    btn.textContent = 'Summarizing...';
+    box.classList.add('show');
+    text.innerHTML = '<em style="color:var(--text-muted);">Generating summary...</em>';
+
+    fetch(`/api/note/${noteId}/summarize`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                text.innerHTML = `<span style="color:var(--red);">${data.error}</span>`;
+            } else {
+                text.textContent = data.summary;
+            }
+            btn.disabled = false;
+            btn.textContent = 'Re-summarize';
+        })
+        .catch(err => {
+            text.innerHTML = `<span style="color:var(--red);">Failed: ${err}</span>`;
+            btn.disabled = false;
+            btn.textContent = 'Summarize';
+        });
+}
+</script>
+{% endif %}

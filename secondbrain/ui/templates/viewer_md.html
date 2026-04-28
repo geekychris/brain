@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — VaultForge{% endblock %}
+{% block content %}
+<style>
+    .md-viewer {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 30px 40px;
+        line-height: 1.8;
+        font-size: 0.95em;
+    }
+    .md-viewer h1, .md-viewer h2, .md-viewer h3, .md-viewer h4 {
+        color: var(--accent);
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+    .md-viewer h1 { font-size: 1.6em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .md-viewer h2 { font-size: 1.3em; }
+    .md-viewer h3 { font-size: 1.1em; }
+    .md-viewer p { margin: 0.8em 0; }
+    .md-viewer ul, .md-viewer ol { padding-left: 24px; margin: 0.5em 0; }
+    .md-viewer li { margin: 0.3em 0; }
+    .md-viewer a { color: var(--accent); }
+    .md-viewer a.wikilink { color: var(--purple); font-weight: 500; }
+    .md-viewer a.wikilink:hover { text-decoration: underline; }
+    .md-viewer code {
+        background: var(--bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .md-viewer pre {
+        background: var(--bg);
+        padding: 16px;
+        border-radius: var(--radius);
+        overflow-x: auto;
+        border: 1px solid var(--border);
+    }
+    .md-viewer pre code { background: none; padding: 0; }
+    .md-viewer table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .md-viewer th, .md-viewer td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+    .md-viewer th { background: var(--bg-hover); }
+    .md-viewer blockquote {
+        border-left: 3px solid var(--accent);
+        padding-left: 16px;
+        margin: 1em 0;
+        color: var(--text-muted);
+    }
+    .md-viewer img { max-width: 100%; border-radius: var(--radius); }
+    .viewer-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .tab-toggle { display: flex; gap: 4px; }
+    .tab-toggle button {
+        padding: 6px 14px;
+        font-size: 0.85em;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        border-radius: var(--radius);
+        cursor: pointer;
+    }
+    .tab-toggle button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    #raw-view {
+        display: none;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        white-space: pre-wrap;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.85em;
+        line-height: 1.6;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+</style>
+
+<div class="viewer-toolbar">
+    <div>
+        <h1 style="margin: 0;">{{ title }}</h1>
+        {% if frontmatter %}
+        <div style="margin-top: 6px;">
+            <span class="badge badge-{{ frontmatter.note_type }}">{{ frontmatter.note_type }}</span>
+            {% for tag in frontmatter.tags %}<span class="tag">#{{ tag }}</span>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="tab-toggle">
+        <button class="active" onclick="showRendered(this)">Rendered</button>
+        <button onclick="showRaw(this)">Raw Markdown</button>
+    </div>
+</div>
+
+{% include "partials/annotations.html" %}
+
+<div id="rendered-view" class="md-viewer">
+    {{ html_content | safe }}
+</div>
+
+<div id="raw-view">{{ raw_content }}</div>
+
+<div style="margin-top: 15px;">
+    <a href="javascript:history.back()" class="btn btn-outline">Back</a>
+</div>
+
+<script>
+function showRendered(btn) {
+    document.getElementById('rendered-view').style.display = 'block';
+    document.getElementById('raw-view').style.display = 'none';
+    document.querySelectorAll('.tab-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+function showRaw(btn) {
+    document.getElementById('rendered-view').style.display = 'none';
+    document.getElementById('raw-view').style.display = 'block';
+    document.querySelectorAll('.tab-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,5 @@
+vault/
+.idea/
+__pycache__/
+*.pyc
+*.egg-info/

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ entity.name }} — VaultForge{% endblock %}
+{% block content %}
+<h1>{{ entity.name }}</h1>
+
+<div style="margin-bottom: 20px;">
+    <span class="badge badge-concept">{{ entity.entity_type }}</span>
+    <span style="color: var(--text-muted); font-family: monospace; margin-left: 10px; font-size: 0.85em;">{{ entity.id }}</span>
+</div>
+
+{% if aliases %}
+<div class="card" style="margin-bottom: 20px;">
+    <h3>Aliases</h3>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+        {% for a in aliases %}
+        <span class="tag">{{ a }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+    <div>
+        <h2>Notes Mentioning "{{ entity.name }}" <span style="color: var(--text-muted); font-size: 0.7em;">({{ mentioning_notes | length }})</span></h2>
+        {% if mentioning_notes %}
+        <table>
+            <thead>
+                <tr><th>Title</th><th>Type</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+                {% for note in mentioning_notes[:50] %}
+                <tr>
+                    <td><a href="/notes/{{ note.id }}">{{ note.title }}</a></td>
+                    <td><span class="badge badge-{{ note.note_type }}">{{ note.note_type }}</span></td>
+                    <td style="color: var(--text-muted);">{{ note.updated_at[:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if mentioning_notes | length > 50 %}
+        <p style="color: var(--text-muted); margin-top: 10px;">Showing 50 of {{ mentioning_notes | length }}</p>
+        {% endif %}
+        {% else %}
+        <p style="color: var(--text-muted);">No notes mention this entity.</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <h2>Related Entities</h2>
+        <p style="color: var(--text-muted); font-size: 0.85em; margin-bottom: 10px;">
+            Co-occurring in the same notes
+        </p>
+        {% if related_entities %}
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            {% for re in related_entities %}
+            <a href="/entities/{{ re.id }}" style="text-decoration: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.15s;">
+                    <div>
+                        <span style="color: var(--text);">{{ re.name }}</span>
+                        <span style="color: var(--text-muted); font-size: 0.8em; margin-left: 6px;">{{ re.type }}</span>
+                    </div>
+                    <span style="background: var(--accent); color: var(--bg); padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 600;">{{ re.co_mention_count }}x</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted);">No related entities found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="/entities" class="btn btn-outline">Back to Entities</a>
+</div>
+{% endblock %}

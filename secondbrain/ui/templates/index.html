@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}VaultForge — Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="value">{{ total_sources }}</div>
+        <div class="label">Sources Ingested</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ total_notes }}</div>
+        <div class="label">Compiled Notes</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ total_entities }}</div>
+        <div class="label">Entities</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ pending_jobs }}</div>
+        <div class="label">Pending Jobs</div>
+    </div>
+</div>
+
+{% if uncompiled > 0 %}
+<div class="card" style="border-color: var(--yellow);">
+    <strong style="color: var(--yellow);">{{ uncompiled }} source{{ 's' if uncompiled != 1 }} waiting to be compiled</strong>
+    <form action="/compile" method="post" style="margin-top: 10px;">
+        <button type="submit" class="btn-green">Compile Now</button>
+    </form>
+</div>
+{% endif %}
+
+{% if type_counts %}
+<h2>Notes by Type</h2>
+<div class="stats">
+    {% for note_type, count in type_counts.items() %}
+    <div class="stat-card">
+        <div class="value">{{ count }}</div>
+        <div class="label"><a href="/notes?note_type={{ note_type }}">{{ note_type }}</a></div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<h2>Recent Notes</h2>
+{% if recent_notes %}
+<table>
+    <thead>
+        <tr><th>Title</th><th>Type</th><th>Updated</th></tr>
+    </thead>
+    <tbody>
+        {% for note in recent_notes %}
+        <tr>
+            <td><a href="/notes/{{ note.id }}">{{ note.title }}</a></td>
+            <td><span class="badge badge-{{ note.note_type }}">{{ note.note_type }}</span></td>
+            <td style="color: var(--text-muted);">{{ note.updated_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No notes yet</h2>
+    <p>Ingest some sources and compile them to get started.</p>
+    <a href="/ingest" class="btn" style="margin-top: 15px;">Ingest Sources</a>
+</div>
+{% endif %}
+
+<h2>Recent Sources</h2>
+{% if recent_sources %}
+<table>
+    <thead>
+        <tr><th>Title</th><th>Type</th><th>Imported</th></tr>
+    </thead>
+    <tbody>
+        {% for src in recent_sources %}
+        <tr>
+            <td>{{ src.title or src.id }}</td>
+            <td><span class="badge badge-source">{{ src.source_type }}</span></td>
+            <td style="color: var(--text-muted);">{{ src.imported_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

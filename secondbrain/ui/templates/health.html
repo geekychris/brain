@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Health — VaultForge{% endblock %}
+{% block content %}
+<h1>Vault Health</h1>
+
+{% if report.total_issues == 0 %}
+<div class="card" style="border-color: var(--green);">
+    <h2 class="health-ok">All Clear</h2>
+    <p>No issues found in the vault.</p>
+</div>
+{% else %}
+<div class="stats">
+    <div class="stat-card">
+        <div class="value {% if report.orphan_notes %}health-warn{% else %}health-ok{% endif %}">{{ report.orphan_notes | length }}</div>
+        <div class="label">Orphan Notes</div>
+    </div>
+    <div class="stat-card">
+        <div class="value {% if report.broken_links %}health-error{% else %}health-ok{% endif %}">{{ report.broken_links | length }}</div>
+        <div class="label">Broken Links</div>
+    </div>
+    <div class="stat-card">
+        <div class="value {% if report.duplicate_candidates %}health-warn{% else %}health-ok{% endif %}">{{ report.duplicate_candidates | length }}</div>
+        <div class="label">Duplicate Candidates</div>
+    </div>
+    <div class="stat-card">
+        <div class="value {% if report.stale_notes %}health-warn{% else %}health-ok{% endif %}">{{ report.stale_notes | length }}</div>
+        <div class="label">Stale Notes</div>
+    </div>
+    <div class="stat-card">
+        <div class="value {% if report.missing_provenance %}health-warn{% else %}health-ok{% endif %}">{{ report.missing_provenance | length }}</div>
+        <div class="label">Missing Provenance</div>
+    </div>
+    <div class="stat-card">
+        <div class="value {% if report.uncompiled_sources %}health-warn{% else %}health-ok{% endif %}">{{ report.uncompiled_sources }}</div>
+        <div class="label">Uncompiled Sources</div>
+    </div>
+</div>
+
+{% if report.orphan_notes %}
+<div class="card">
+    <h3>Orphan Notes</h3>
+    <p style="color: var(--text-muted); font-size: 0.85em; margin-bottom: 10px;">Notes with no inbound or outbound links.</p>
+    {% for n in report.orphan_notes %}
+    <span class="tag">{{ n }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if report.broken_links %}
+<div class="card">
+    <h3>Broken Links</h3>
+    <table>
+        <thead><tr><th>Source Note</th><th>Missing Target</th></tr></thead>
+        <tbody>
+        {% for bl in report.broken_links %}
+        <tr>
+            <td>{{ bl.source }}</td>
+            <td style="color: var(--red);">[[{{ bl.target }}]]</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if report.duplicate_candidates %}
+<div class="card">
+    <h3>Duplicate Candidates</h3>
+    {% for group in report.duplicate_candidates %}
+    <div style="margin: 5px 0;">
+        {% for n in group %}<span class="tag">{{ n }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if report.stale_notes %}
+<div class="card">
+    <h3>Stale Notes</h3>
+    {% for n in report.stale_notes %}
+    <span class="tag">{{ n }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

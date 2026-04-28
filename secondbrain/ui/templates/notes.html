@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Notes — VaultForge{% endblock %}
+{% block content %}
+<h1>Notes{% if note_type %} — {{ note_type }}{% endif %}</h1>
+
+<div class="tabs">
+    <a href="/notes" class="tab {% if not note_type %}active{% endif %}">All</a>
+    <a href="/notes?note_type=source" class="tab {% if note_type == 'source' %}active{% endif %}">Sources</a>
+    <a href="/notes?note_type=concept" class="tab {% if note_type == 'concept' %}active{% endif %}">Concepts</a>
+    <a href="/notes?note_type=project" class="tab {% if note_type == 'project' %}active{% endif %}">Projects</a>
+    <a href="/notes?note_type=person" class="tab {% if note_type == 'person' %}active{% endif %}">People</a>
+    <a href="/notes?note_type=decision" class="tab {% if note_type == 'decision' %}active{% endif %}">Decisions</a>
+    <a href="/notes?note_type=map" class="tab {% if note_type == 'map' %}active{% endif %}">Maps</a>
+</div>
+
+{% if notes %}
+<table>
+    <thead>
+        <tr><th>Title</th><th>Type</th><th>Path</th><th>Updated</th></tr>
+    </thead>
+    <tbody>
+        {% for note in notes %}
+        <tr>
+            <td><a href="/notes/{{ note.id }}">{{ note.title }}</a></td>
+            <td><span class="badge badge-{{ note.note_type }}">{{ note.note_type }}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.85em;">{{ note.path }}</td>
+            <td style="color: var(--text-muted);">{{ note.updated_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No notes found</h2>
+    <p>Ingest sources and compile them to create notes.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ note.title }} — VaultForge{% endblock %}
+{% block content %}
+<h1>{{ note.title }}</h1>
+
+<div style="margin-bottom: 20px;">
+    <span class="badge badge-{{ note.note_type }}">{{ note.note_type }}</span>
+    {% if frontmatter and frontmatter.tags %}
+        {% for tag in frontmatter.tags %}
+            <span class="tag">#{{ tag }}</span>
+        {% endfor %}
+    {% endif %}
+    <a href="/view/{{ note.path }}" style="font-size: 0.85em; margin-left: 10px;">{{ note.path }}</a>
+</div>
+
+<div style="margin-bottom: 15px;">
+    <a href="/view/{{ note.path }}" class="btn btn-sm">Read Full Document</a>
+    <a href="/concepts/{{ note.title }}" class="btn btn-sm btn-outline" style="margin-left: 6px;">View as Concept</a>
+    {% if frontmatter and frontmatter.source_ids %}
+        {% for sid in frontmatter.source_ids %}
+        <span style="color: var(--text-muted); font-size: 0.85em; margin-left: 10px;">Source: <code>{{ sid }}</code></span>
+        {% endfor %}
+    {% endif %}
+</div>
+
+{% if frontmatter %}
+<div class="card" style="margin-bottom: 20px;">
+    <h3>Metadata</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        {% if frontmatter.confidence %}
+        <div><span style="color: var(--text-muted);">Confidence:</span> {{ frontmatter.confidence }}</div>
+        {% endif %}
+        {% if frontmatter.created %}
+        <div><span style="color: var(--text-muted);">Created:</span> {{ frontmatter.created }}</div>
+        {% endif %}
+        {% if frontmatter.updated %}
+        <div><span style="color: var(--text-muted);">Updated:</span> {{ frontmatter.updated }}</div>
+        {% endif %}
+        {% if frontmatter.source_ids %}
+        <div><span style="color: var(--text-muted);">Sources:</span> {{ frontmatter.source_ids | join(', ') }}</div>
+        {% endif %}
+        {% if frontmatter.aliases %}
+        <div><span style="color: var(--text-muted);">Aliases:</span> {{ frontmatter.aliases | join(', ') }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="note-body">{{ body }}</div>
+
+{% if outbound_links or inbound_links %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+    {% if outbound_links %}
+    <div class="card">
+        <h3>Outbound Links</h3>
+        {% for link in outbound_links %}
+        <div style="margin-top: 5px;">
+            <a href="/notes/{{ link.to_note_id }}">{{ link.to_note_id }}</a>
+            <span style="color: var(--text-muted); font-size: 0.8em;">({{ link.link_type }}, {{ "%.0f" | format(link.confidence * 100) }}%)</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if inbound_links %}
+    <div class="card">
+        <h3>Inbound Links</h3>
+        {% for link in inbound_links %}
+        <div style="margin-top: 5px;">
+            <a href="/notes/{{ link.from_note_id }}">{{ link.from_note_id }}</a>
+            <span style="color: var(--text-muted); font-size: 0.8em;">({{ link.link_type }})</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="/notes" class="btn btn-outline">Back to Notes</a>
+</div>
+{% endblock %}

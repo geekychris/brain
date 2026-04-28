@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Concepts — VaultForge{% endblock %}
+{% block content %}
+<h1>Concepts <span style="color: var(--text-muted); font-size: 0.6em;">({{ total }} total)</span></h1>
+
+<form action="/concepts" method="get" style="margin-bottom: 20px;">
+    <div style="display: flex; gap: 10px;">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search concepts..." style="flex: 1;">
+        <button type="submit" class="btn">Search</button>
+        {% if query %}<a href="/concepts" class="btn btn-outline">Clear</a>{% endif %}
+    </div>
+</form>
+
+<div style="margin-bottom: 15px;">
+    <a href="/graph" class="btn btn-outline">View Concept Graph</a>
+</div>
+
+{% if concepts %}
+<table>
+    <thead>
+        <tr>
+            <th>Concept</th>
+            <th>Type</th>
+            <th style="text-align: right;">Mentions</th>
+            <th style="text-align: right;">Co-mentions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in concepts %}
+        <tr>
+            <td><a href="/concepts/{{ c.title }}">{{ c.title }}</a></td>
+            <td>
+                {% if c.note_type %}
+                <span class="badge badge-{{ c.note_type }}">{{ c.note_type }}</span>
+                {% else %}
+                <span style="color: var(--text-muted); font-size: 0.85em;">unlinked</span>
+                {% endif %}
+            </td>
+            <td style="text-align: right;">
+                <span style="color: var(--accent); font-weight: 600;">{{ c.mention_count }}</span>
+            </td>
+            <td style="text-align: right; color: var(--text-muted);">
+                {{ c.co_mentions | length }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No concepts found</h2>
+</div>
+{% endif %}
+{% endblock %}

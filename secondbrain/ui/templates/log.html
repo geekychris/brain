@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Activity Log — VaultForge{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1>Activity Log</h1>
+    <div>
+        <span id="status-badge" style="display: none; padding: 6px 14px; border-radius: 12px; font-size: 0.85em; font-weight: 600; background: #1f3d1a; color: var(--green); animation: pulse 2s infinite;">
+            Compiling...
+        </span>
+        <span id="status-idle" style="padding: 6px 14px; border-radius: 12px; font-size: 0.85em; font-weight: 600; background: var(--bg-hover); color: var(--text-muted);">
+            Idle
+        </span>
+    </div>
+</div>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .log-entry {
+        display: flex;
+        gap: 12px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.9em;
+        align-items: flex-start;
+    }
+    .log-entry:hover { background: var(--bg-hover); }
+    .log-time {
+        color: var(--text-muted);
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.82em;
+        white-space: nowrap;
+        min-width: 80px;
+    }
+    .log-cat {
+        font-size: 0.78em;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        min-width: 70px;
+        text-align: center;
+    }
+    .log-cat-ingest { background: #1a3a5c; color: var(--cyan); }
+    .log-cat-compile { background: #2d1f54; color: var(--purple); }
+    .log-cat-general { background: var(--bg-hover); color: var(--text-muted); }
+    .log-level-info { }
+    .log-level-warn .log-msg { color: var(--yellow); }
+    .log-level-error .log-msg { color: var(--red); }
+    .log-msg { flex: 1; }
+    .log-detail {
+        color: var(--text-muted);
+        font-size: 0.85em;
+        margin-top: 3px;
+    }
+    .log-new {
+        animation: fadeIn 0.3s ease-in;
+        background: rgba(122, 162, 247, 0.05);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="tabs">
+    <a href="/log" class="tab {% if not category %}active{% endif %}">All</a>
+    <a href="/log?category=ingest" class="tab {% if category == 'ingest' %}active{% endif %}">Ingest</a>
+    <a href="/log?category=compile" class="tab {% if category == 'compile' %}active{% endif %}">Compile</a>
+</div>
+
+<div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;">
+    <div style="display: flex; gap: 12px; padding: 10px 14px; background: var(--bg-hover); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;">
+        <div style="min-width: 80px;">Time</div>
+        <div style="min-width: 70px;">Category</div>
+        <div style="flex: 1;">Message</div>
+    </div>
+    <div id="log-entries">
+        {% if entries %}
+            {% for entry in entries %}
+            <div class="log-entry log-level-{{ entry.level }}" data-id="{{ entry.id }}">
+                <div class="log-time">{{ entry.timestamp[11:19] }}</div>
+                <div class="log-cat log-cat-{{ entry.category }}">{{ entry.category }}</div>
+                <div class="log-msg">
+                    {{ entry.message }}
+                    {% if entry.detail %}
+                    <div class="log-detail">{{ entry.detail }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                No activity yet. Ingest some files or run a compile to see progress here.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const category = "{{ category or '' }}";
+    let maxId = 0;
+    let isCompiling = {{ 'true' if compile_running else 'false' }};
+
+    // Find the highest ID currently displayed
+    document.querySelectorAll('.log-entry').forEach(el => {
+        const id = parseInt(el.dataset.id);
+        if (id > maxId) maxId = id;
+    });
+
+    function updateStatus(running) {
+        isCompiling = running;
+        document.getElementById('status-badge').style.display = running ? 'inline-block' : 'none';
+        document.getElementById('status-idle').style.display = running ? 'none' : 'inline-block';
+    }
+
+    updateStatus(isCompiling);
+
+    function pollLog() {
+        const url = `/log/entries?since_id=${maxId}` + (category ? `&category=${category}` : '');
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                updateStatus(data.compile_running);
+
+                if (data.entries.length > 0) {
+                    const container = document.getElementById('log-entries');
+                    // Remove empty state message if present
+                    const emptyMsg = container.querySelector('div[style*="text-align: center"]');
+                    if (emptyMsg) emptyMsg.remove();
+
+                    // Entries come newest-first, insert at top
+                    data.entries.reverse().forEach(entry => {
+                        if (entry.id > maxId) {
+                            maxId = entry.id;
+                            const div = document.createElement('div');
+                            div.className = `log-entry log-level-${entry.level} log-new`;
+                            div.dataset.id = entry.id;
+                            div.innerHTML = `
+                                <div class="log-time">${entry.timestamp.substring(11, 19)}</div>
+                                <div class="log-cat log-cat-${entry.category}">${entry.category}</div>
+                                <div class="log-msg">
+                                    ${entry.message}
+                                    ${entry.detail ? `<div class="log-detail">${entry.detail}</div>` : ''}
+                                </div>
+                            `;
+                            container.insertBefore(div, container.firstChild);
+                        }
+                    });
+                }
+            })
+            .catch(() => {});
+    }
+
+    // Poll every 2 seconds
+    setInterval(pollLog, 2000);
+</script>
+{% endblock %}

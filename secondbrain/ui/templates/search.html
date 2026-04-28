@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+{% block title %}Search — VaultForge{% endblock %}
+{% block content %}
+<style>
+    .search-box {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .search-input {
+        width: 100%;
+        padding: 14px 18px;
+        font-size: 1.15em;
+        background: var(--bg);
+        border: 2px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text);
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15);
+    }
+    .search-options {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .mode-toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    .mode-toggle label {
+        padding: 6px 14px; font-size: 0.85em; cursor: pointer;
+        background: var(--bg); color: var(--text-muted); border: none; margin: 0;
+        transition: all 0.15s;
+    }
+    .mode-toggle input { display: none; }
+    .mode-toggle input:checked + label { background: var(--accent); color: var(--bg); }
+    .field-checks { display: inline-flex; gap: 8px; align-items: center; }
+    .field-check {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 0.85em; color: var(--text-muted);
+    }
+    .field-check input[type="checkbox"] { accent-color: var(--accent); }
+    .search-layout { display: grid; grid-template-columns: 1fr 240px; gap: 20px; }
+    @media (max-width: 900px) { .search-layout { grid-template-columns: 1fr; } }
+    .facet-panel {
+        background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 16px; position: sticky; top: 20px;
+    }
+    .facet-section { margin-bottom: 16px; }
+    .facet-section h4 {
+        font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-muted); margin-bottom: 8px;
+    }
+    .facet-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.85em; }
+    .facet-item a { color: var(--text); text-decoration: none; }
+    .facet-item a:hover { color: var(--accent); }
+    .facet-item a.active { color: var(--accent); font-weight: 600; }
+    .facet-count {
+        background: var(--bg-hover); padding: 1px 8px;
+        border-radius: 10px; font-size: 0.8em; color: var(--text-muted);
+    }
+    .result-card {
+        background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+        transition: border-color 0.15s;
+    }
+    .result-card:hover { border-color: var(--accent); }
+    .result-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .result-title { font-size: 1.05em; font-weight: 600; }
+    .result-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+    .result-excerpt {
+        color: var(--text-muted); font-size: 0.85em; line-height: 1.5;
+        margin: 4px 0; padding: 6px 10px; background: var(--bg); border-radius: 4px;
+    }
+    .result-excerpt mark {
+        background: rgba(122, 162, 247, 0.25); color: var(--text);
+        padding: 0 2px; border-radius: 2px;
+    }
+    .matched-field {
+        font-size: 0.7em; padding: 2px 6px;
+        background: rgba(122, 162, 247, 0.15); color: var(--accent); border-radius: 4px;
+    }
+    .active-filter {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 4px 10px; background: rgba(122, 162, 247, 0.15);
+        border-radius: var(--radius); font-size: 0.85em; color: var(--accent); margin-right: 6px;
+    }
+    .active-filter a { color: var(--red); text-decoration: none; font-weight: 600; margin-left: 4px; }
+
+    /* Help & query builder */
+    .help-toggle {
+        font-size: 0.85em; color: var(--accent); cursor: pointer;
+        text-decoration: none; user-select: none;
+    }
+    .help-toggle:hover { text-decoration: underline; }
+    #help-panel {
+        display: none; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;
+    }
+    #help-panel.show { display: block; }
+    .help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .help-grid { grid-template-columns: 1fr; } }
+    .help-section h4 { color: var(--accent); font-size: 0.9em; margin-bottom: 8px; }
+    .example-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.85em;
+    }
+    .example-query {
+        font-family: 'SF Mono', 'Fira Code', monospace; color: var(--cyan);
+        cursor: pointer; padding: 2px 6px; border-radius: 4px;
+        transition: background 0.15s;
+    }
+    .example-query:hover { background: var(--bg-hover); }
+    .example-desc { color: var(--text-muted); font-size: 0.9em; }
+
+    /* Query builder */
+    #builder {
+        display: none; margin-top: 12px; padding: 14px;
+        background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    #builder.show { display: block; }
+    .builder-row {
+        display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .builder-row select, .builder-row input[type="text"] {
+        padding: 6px 10px; background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius); color: var(--text); font-size: 0.9em;
+    }
+    .builder-row input[type="text"] { flex: 1; }
+    .builder-row .remove-clause {
+        background: none; border: none; color: var(--red); cursor: pointer;
+        font-size: 1.1em; padding: 4px;
+    }
+    #index-info {
+        font-size: 0.8em; color: var(--text-muted); margin-top: 8px;
+    }
+</style>
+
+<h1>Search</h1>
+
+<form id="search-form" action="/search" method="get">
+<div class="search-box">
+    <input class="search-input" type="text" name="q" id="search-q" value="{{ query }}"
+           placeholder='Search: kafka, "machine learning", arduino AND NOT esp32' autofocus>
+
+    <div class="search-options">
+        <div class="mode-toggle">
+            <input type="radio" name="mode" value="fulltext" id="mode-ft" {% if mode == 'fulltext' %}checked{% endif %}>
+            <label for="mode-ft">Full-text</label>
+            <input type="radio" name="mode" value="semantic" id="mode-sem" {% if mode == 'semantic' %}checked{% endif %}>
+            <label for="mode-sem">Semantic</label>
+        </div>
+
+        <span style="color: var(--border);">|</span>
+
+        <span style="color: var(--text-muted); font-size: 0.85em;">Fields:</span>
+        <div class="field-checks">
+            <label class="field-check">
+                <input type="checkbox" name="field" value="title" {% if 'title' in active_fields %}checked{% endif %}> Title
+            </label>
+            <label class="field-check">
+                <input type="checkbox" name="field" value="body" {% if 'body' in active_fields %}checked{% endif %}> Body
+            </label>
+            <label class="field-check">
+                <input type="checkbox" name="field" value="tags" {% if 'tags' in active_fields %}checked{% endif %}> Tags
+            </label>
+            <label class="field-check">
+                <input type="checkbox" name="field" value="source_ids" {% if 'source_ids' in active_fields %}checked{% endif %}> Source IDs
+            </label>
+        </div>
+
+        <button type="submit" class="btn">Search</button>
+
+        <span style="color: var(--border);">|</span>
+        <a class="help-toggle" onclick="toggleHelp()">Help &amp; Examples</a>
+        <a class="help-toggle" onclick="toggleBuilder()">Query Builder</a>
+    </div>
+
+    <!-- Query Builder -->
+    <div id="builder">
+        <div id="builder-clauses">
+            <div class="builder-row" data-idx="0">
+                <select class="clause-op">
+                    <option value="">—</option>
+                    <option value="AND">AND</option>
+                    <option value="OR">OR</option>
+                    <option value="NOT">NOT</option>
+                </select>
+                <select class="clause-field">
+                    <option value="">Any field</option>
+                    <option value="title">Title</option>
+                    <option value="body">Body</option>
+                    <option value="tags">Tags</option>
+                </select>
+                <input type="text" class="clause-term" placeholder="Term or &quot;exact phrase&quot;">
+                <button type="button" class="remove-clause" onclick="removeClause(this)" title="Remove">&times;</button>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button type="button" class="btn btn-sm btn-outline" onclick="addClause()">+ Add Clause</button>
+            <button type="button" class="btn btn-sm" onclick="applyBuilder()">Apply to Search</button>
+        </div>
+    </div>
+
+    <!-- Help Panel -->
+    <div id="help-panel">
+        <div class="help-grid">
+            <div class="help-section">
+                <h4>Query Syntax</h4>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">kafka</code>
+                    <span class="example-desc">Simple term</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">"machine learning"</code>
+                    <span class="example-desc">Exact phrase</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">kafka AND partitions</code>
+                    <span class="example-desc">Both terms</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">kafka OR redis</code>
+                    <span class="example-desc">Either term</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">kafka NOT zookeeper</code>
+                    <span class="example-desc">Exclude term</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">mach*</code>
+                    <span class="example-desc">Prefix match</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">NEAR(kafka partitions, 5)</code>
+                    <span class="example-desc">Terms within 5 words</span>
+                </div>
+            </div>
+            <div class="help-section">
+                <h4>Field-Specific Search</h4>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">title : kafka</code>
+                    <span class="example-desc">Title only</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">tags : arduino</code>
+                    <span class="example-desc">Tag match</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">title : kafka OR body : partition</code>
+                    <span class="example-desc">Mixed field search</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">title : "event sourcing" AND tags : architecture</code>
+                    <span class="example-desc">Combined field + tag</span>
+                </div>
+                <h4 style="margin-top: 16px;">Common Searches</h4>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">"distributed systems" AND NOT tutorial</code>
+                    <span class="example-desc">Concept, not tutorials</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">tags : (arduino OR "raspberry pi")</code>
+                    <span class="example-desc">Multiple tag values</span>
+                </div>
+                <div class="example-row">
+                    <code class="example-query" onclick="useExample(this)">NEAR("consumer group" rebalance, 10)</code>
+                    <span class="example-desc">Proximity search</span>
+                </div>
+            </div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.8em; margin-top: 12px;">
+            Powered by SQLite FTS5 with Porter stemming. "running" matches "run", "runs", etc.
+            {% if result %}Index: {{ result.indexed_count }} notes.{% endif %}
+            <form action="/search/rebuild" method="post" style="display:inline;">
+                <button type="submit" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.85em;text-decoration:underline;">Rebuild Index</button>
+            </form>
+        </p>
+    </div>
+</div>
+
+<!-- Preserve filter state -->
+{% if filter_type %}<input type="hidden" name="type" value="{{ filter_type }}">{% endif %}
+{% if filter_tag %}<input type="hidden" name="tag" value="{{ filter_tag }}">{% endif %}
+{% if filter_confidence %}<input type="hidden" name="confidence" value="{{ filter_confidence }}">{% endif %}
+</form>
+
+{% set any_filter = filter_type or filter_tag or filter_confidence or filter_starred or filter_label or filter_user_tag %}
+{% if any_filter %}
+<div style="margin-bottom: 15px;">
+    <span style="color: var(--text-muted); font-size: 0.85em;">Active filters:</span>
+    {% if filter_starred %}
+    <span class="active-filter">starred
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+    {% if filter_label %}
+    <span class="active-filter">label: {{ filter_label }}
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+    {% if filter_user_tag %}
+    <span class="active-filter">user tag: {{ filter_user_tag }}
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+    {% if filter_type %}
+    <span class="active-filter">type: {{ filter_type }}
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_starred %}&starred=1{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+    {% if filter_tag %}
+    <span class="active-filter">tag: {{ filter_tag }}
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_starred %}&starred=1{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+    {% if filter_confidence %}
+    <span class="active-filter">confidence: {{ filter_confidence }}
+        <a href="/search?q={{ query }}&mode={{ mode }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}">&times;</a>
+    </span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if result %}
+<p style="color: var(--text-muted); margin-bottom: 15px;">
+    {{ result.total }} result{{ 's' if result.total != 1 }}{% if query %} for "{{ query }}"{% endif %}
+    <span class="badge badge-source" style="margin-left: 6px;">{{ result.mode }}</span>
+    <span id="index-info" style="margin-left: 8px;">{{ result.indexed_count }} notes indexed</span>
+</p>
+
+<div class="search-layout">
+    <div>
+        {% if result.hits %}
+        {% for hit in result.hits %}
+        <div class="result-card">
+            <div class="result-header">
+                <div>
+                    <a href="/notes/{{ hit.note.id }}" class="result-title">{{ hit.note.title }}</a>
+                    <div class="result-meta">
+                        <span class="badge badge-{{ hit.note_type }}">{{ hit.note_type }}</span>
+                        {% for f in hit.matched_fields %}
+                        <span class="matched-field">{{ f }}</span>
+                        {% endfor %}
+                        {% for tag in hit.tags[:3] %}
+                        <span class="tag">#{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="color: var(--green); font-size: 0.8em; font-weight: 600;">{{ "%.1f" | format(hit.score) }}</span>
+                    <a href="/view/{{ hit.note.path }}" class="btn btn-sm btn-outline" style="padding: 4px 10px; font-size: 0.8em;">Read</a>
+                </div>
+            </div>
+            {% if hit.excerpts %}
+            <div style="margin-top: 8px;">
+                {% for excerpt in hit.excerpts %}
+                <p class="result-excerpt">{{ excerpt | safe }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state" style="padding: 40px;">
+            <h2>No results</h2>
+            <p>Try different keywords, broaden your field selection, or remove filters.
+            <br>Click <strong>Help &amp; Examples</strong> above for query syntax.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <div class="facet-panel">
+            <!-- Annotation facets -->
+            {% if starred_count or all_labels or all_user_tags %}
+            <div class="facet-section">
+                <h4>Annotations</h4>
+                {% if starred_count %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&starred=1{% if filter_type %}&type={{ filter_type }}{% endif %}"
+                       {% if filter_starred %}class="active"{% endif %}>Starred</a>
+                    <span class="facet-count">{{ starred_count }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if all_labels %}
+            <div class="facet-section">
+                <h4>Labels</h4>
+                {% for lbl, count in all_labels[:15] %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&label={{ lbl }}{% if filter_type %}&type={{ filter_type }}{% endif %}"
+                       {% if filter_label == lbl %}class="active"{% endif %}>{{ lbl }}</a>
+                    <span class="facet-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if all_user_tags %}
+            <div class="facet-section">
+                <h4>User Tags</h4>
+                {% for tg, count in all_user_tags[:15] %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&user_tag={{ tg }}{% if filter_type %}&type={{ filter_type }}{% endif %}"
+                       {% if filter_user_tag == tg %}class="active"{% endif %}>#{{ tg }}</a>
+                    <span class="facet-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if result.facets.note_types %}
+            <div class="facet-section">
+                <h4>Note Type</h4>
+                {% for type_name, count in result.facets.note_types %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&type={{ type_name }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}"
+                       {% if filter_type == type_name %}class="active"{% endif %}>{{ type_name }}</a>
+                    <span class="facet-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if result.facets.tags %}
+            <div class="facet-section">
+                <h4>Tags</h4>
+                {% for tag_name, count in result.facets.tags %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&tag={{ tag_name }}{% if filter_type %}&type={{ filter_type }}{% endif %}"
+                       {% if filter_tag == tag_name %}class="active"{% endif %}>#{{ tag_name }}</a>
+                    <span class="facet-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if result.facets.confidence %}
+            <div class="facet-section">
+                <h4>Confidence</h4>
+                {% for conf, count in result.facets.confidence %}
+                {% if conf %}
+                <div class="facet-item">
+                    <a href="/search?q={{ query }}&mode={{ mode }}&confidence={{ conf }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}"
+                       {% if filter_confidence == conf %}class="active"{% endif %}>{{ conf }}</a>
+                    <span class="facet-count">{{ count }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleHelp() {
+    document.getElementById('help-panel').classList.toggle('show');
+    document.getElementById('builder').classList.remove('show');
+}
+function toggleBuilder() {
+    document.getElementById('builder').classList.toggle('show');
+    document.getElementById('help-panel').classList.remove('show');
+}
+
+function useExample(el) {
+    document.getElementById('search-q').value = el.textContent;
+    document.getElementById('search-form').submit();
+}
+
+// --- Query Builder ---
+let clauseCount = 1;
+
+function addClause() {
+    clauseCount++;
+    const container = document.getElementById('builder-clauses');
+    const div = document.createElement('div');
+    div.className = 'builder-row';
+    div.dataset.idx = clauseCount;
+    div.innerHTML = `
+        <select class="clause-op">
+            <option value="AND" selected>AND</option>
+            <option value="OR">OR</option>
+            <option value="NOT">NOT</option>
+        </select>
+        <select class="clause-field">
+            <option value="">Any field</option>
+            <option value="title">Title</option>
+            <option value="body">Body</option>
+            <option value="tags">Tags</option>
+        </select>
+        <input type="text" class="clause-term" placeholder="Term or &quot;exact phrase&quot;">
+        <button type="button" class="remove-clause" onclick="removeClause(this)" title="Remove">&times;</button>
+    `;
+    container.appendChild(div);
+}
+
+function removeClause(btn) {
+    const row = btn.closest('.builder-row');
+    if (document.querySelectorAll('.builder-row').length > 1) {
+        row.remove();
+    }
+}
+
+function applyBuilder() {
+    const rows = document.querySelectorAll('.builder-row');
+    let parts = [];
+
+    rows.forEach((row, i) => {
+        const op = row.querySelector('.clause-op').value;
+        const field = row.querySelector('.clause-field').value;
+        let term = row.querySelector('.clause-term').value.trim();
+        if (!term) return;
+
+        // Auto-quote if it contains spaces and isn't already quoted
+        if (term.includes(' ') && !term.startsWith('"')) {
+            term = `"${term}"`;
+        }
+
+        let clause = field ? `${field} : ${term}` : term;
+
+        if (i === 0) {
+            // First clause: ignore op
+            parts.push(clause);
+        } else if (op === 'NOT') {
+            parts.push(`NOT ${clause}`);
+        } else {
+            parts.push(`${op} ${clause}`);
+        }
+    });
+
+    document.getElementById('search-q').value = parts.join(' ');
+    document.getElementById('search-form').submit();
+}
+
+// Auto-submit on field checkbox change
+document.querySelectorAll('.field-check input').forEach(cb => {
+    cb.addEventListener('change', () => {
+        if (document.getElementById('search-q').value.trim()) {
+            document.getElementById('search-form').submit();
+        }
+    });
+});
+</script>
+{% endblock %}

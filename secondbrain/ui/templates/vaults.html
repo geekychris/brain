@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Vaults — VaultForge{% endblock %}
+{% block content %}
+<h1>Vault Manager</h1>
+
+<p style="color: var(--text-muted); margin-bottom: 20px;">
+    Manage multiple knowledge bases. Switch between them or view them independently.
+    {% if current_vault %}
+    <br>Currently viewing: <code>{{ current_vault }}</code>
+    {% endif %}
+</p>
+
+{% if vaults %}
+<h2>Registered Vaults</h2>
+{% for v in vaults %}
+<div class="card" style="display: flex; justify-content: space-between; align-items: center; {% if v.id == active_id %}border-color: var(--green);{% endif %}">
+    <div>
+        <div style="font-weight: 600; font-size: 1.05em;">
+            {{ v.name }}
+            {% if v.id == active_id %}<span class="badge badge-source" style="background: #1f3d1a; color: var(--green); margin-left: 8px;">Active</span>{% endif %}
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.85em; font-family: monospace; margin-top: 4px;">{{ v.path }}</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        {% if v.id != active_id %}
+        <form action="/vaults/{{ v.id }}/activate" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-green">Switch To</button>
+        </form>
+        {% endif %}
+        <form action="/vaults/{{ v.id }}/remove" method="post" style="display: inline;"
+              onsubmit="return confirm('Remove this vault from the registry? (Files are not deleted)')">
+            <button type="submit" class="btn btn-sm" style="background: transparent; border: 1px solid var(--red); color: var(--red);">Remove</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2>Register a Vault</h2>
+<div class="card">
+    <form action="/vaults/register" method="post">
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" name="name" placeholder="My Second Brain" required>
+            </div>
+            <div class="form-group">
+                <label>Path</label>
+                <input type="text" name="path" placeholder="/Users/you/vaults/brain1" required>
+            </div>
+        </div>
+        <button type="submit" class="btn" style="margin-top: 10px;">Register Vault</button>
+    </form>
+    <p style="color: var(--text-muted); font-size: 0.85em; margin-top: 10px;">
+        Register an existing vault path. Use <code>secondbrain init &lt;path&gt;</code> to create a new vault first.
+    </p>
+</div>
+{% endblock %}

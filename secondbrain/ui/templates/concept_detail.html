@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — VaultForge{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div style="margin-bottom: 20px;">
+    {% if note_type %}<span class="badge badge-{{ note_type }}">{{ note_type }}</span>{% endif %}
+    {% for tag in tags %}
+        <span class="tag">#{{ tag }}</span>
+    {% endfor %}
+    <span style="color: var(--text-muted); margin-left: 10px;">
+        Mentioned in {{ mention_count }} note{{ 's' if mention_count != 1 }}
+    </span>
+</div>
+
+{% if note_id %}
+<div style="margin-bottom: 20px;">
+    <a href="/notes/{{ note_id }}" class="btn btn-outline btn-sm">View Full Note</a>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+    <div>
+        <h2>Notes Mentioning "{{ title }}"</h2>
+        {% if source_notes %}
+        <table>
+            <thead>
+                <tr><th>Title</th><th>Type</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+                {% for note in source_notes %}
+                <tr>
+                    <td><a href="/notes/{{ note.id }}">{{ note.title }}</a></td>
+                    <td><span class="badge badge-{{ note.note_type }}">{{ note.note_type }}</span></td>
+                    <td style="color: var(--text-muted);">{{ note.updated_at[:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: var(--text-muted);">No notes directly mention this concept.</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <h2>Related Concepts</h2>
+        <p style="color: var(--text-muted); font-size: 0.85em; margin-bottom: 10px;">
+            Co-mentioned in the same notes
+        </p>
+        {% if related_concepts %}
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            {% for rc in related_concepts %}
+            <a href="/concepts/{{ rc.title }}" style="text-decoration: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); transition: border-color 0.15s;">
+                    <span style="color: var(--text);">{{ rc.title }}</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 0.8em; color: var(--text-muted);">{{ rc.mention_count }} mentions</span>
+                        <span style="background: var(--accent); color: var(--bg); padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 600;">{{ rc.co_mention_count }}x</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted);">No co-mentioned concepts found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="/concepts" class="btn btn-outline">Back to Concepts</a>
+    <a href="/graph?focus={{ title }}" class="btn btn-outline" style="margin-left: 8px;">View in Graph</a>
+</div>
+{% endblock %}

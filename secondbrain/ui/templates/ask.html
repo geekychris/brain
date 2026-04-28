@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Ask Vault — VaultForge{% endblock %}
+{% block content %}
+<h1>Ask the Vault</h1>
+
+<form action="/ask" method="post">
+    <div class="form-group">
+        <label for="question">Question</label>
+        <input type="text" name="question" id="question"
+               placeholder="What do I know about event sourcing?"
+               value="{{ question or '' }}" autofocus required>
+    </div>
+    <button type="submit">Ask</button>
+</form>
+
+{% if answer %}
+<div class="answer-box">
+    <div class="answer-text">{{ answer.text }}</div>
+    <div class="answer-meta">
+        <span>Confidence: <strong>{{ answer.confidence }}</strong></span>
+        <span>Type: <strong>{{ answer.answer_type }}</strong></span>
+    </div>
+    {% if answer.sources %}
+    <div style="margin-top: 10px;">
+        <span style="color: var(--text-muted); font-size: 0.85em;">Sources:</span>
+        {% for src in answer.sources %}
+            <span class="tag">{{ src }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if search_results %}
+<h2>Related Notes</h2>
+<div class="search-results">
+    {% for result in search_results %}
+    <div class="search-result">
+        <div>
+            <a href="/notes/{{ result.note.id }}">{{ result.note.title }}</a>
+            <span class="relevance">{{ "%.0f" | format(result.relevance * 100) }}% relevant</span>
+            <span class="badge badge-{{ result.note.note_type }}">{{ result.note.note_type }}</span>
+        </div>
+        <div class="excerpt">{{ result.excerpt[:200] }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

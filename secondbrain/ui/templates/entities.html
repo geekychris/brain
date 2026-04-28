@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Entities — VaultForge{% endblock %}
+{% block content %}
+<h1>Entities <span style="color: var(--text-muted); font-size: 0.6em;">({{ total_count }} total)</span></h1>
+
+<form action="/entities" method="get" style="margin-bottom: 20px;">
+    <div style="display: flex; gap: 10px;">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search entities..." style="flex: 1;">
+        {% if entity_type %}<input type="hidden" name="entity_type" value="{{ entity_type }}">{% endif %}
+        <button type="submit" class="btn">Search</button>
+        {% if query or entity_type %}<a href="/entities" class="btn btn-outline">Clear</a>{% endif %}
+    </div>
+</form>
+
+<div class="tabs" style="flex-wrap: wrap;">
+    <a href="/entities{% if query %}?q={{ query }}{% endif %}" class="tab {% if not entity_type %}active{% endif %}">All</a>
+    {% for t, count in top_types %}
+    <a href="/entities?entity_type={{ t }}{% if query %}&q={{ query }}{% endif %}" class="tab {% if entity_type == t %}active{% endif %}">{{ t }} ({{ count }})</a>
+    {% endfor %}
+</div>
+
+{% if entities %}
+<table>
+    <thead>
+        <tr><th>Name</th><th>Type</th><th>Aliases</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for ent in entities[:100] %}
+        <tr>
+            <td><a href="/entities/{{ ent.id }}">{{ ent.name }}</a></td>
+            <td><span class="badge badge-concept">{{ ent.entity_type }}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.85em;">{{ ent.aliases_json or '' }}</td>
+            <td><a href="/entities/{{ ent.id }}" style="font-size: 0.85em;">details</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if entities | length > 100 %}
+<p style="color: var(--text-muted); margin-top: 10px;">Showing 100 of {{ entities | length }}. Use search to narrow down.</p>
+{% endif %}
+{% else %}
+<div class="empty-state">
+    <h2>No entities found</h2>
+    <p>Entities are extracted during compilation.</p>
+</div>
+{% endif %}
+{% endblock %}
