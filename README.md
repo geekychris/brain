@@ -141,6 +141,19 @@ The Markdown vault is the source of truth. The SQLite database is disposable —
 
 ---
 
+## Screenshots
+
+Captured from a freshly installed instance (vault empty — makes the layout easier to read).
+
+| | |
+|---|---|
+| ![Dashboard](docs/screenshots/vaultforge_dashboard.png) | ![Settings](docs/screenshots/vaultforge_settings.png) |
+| **Dashboard** — sources / compiled notes / entity / pending-job counters plus recent activity | **Settings** — LLM endpoint, embedding model, compile prompts |
+| ![Search](docs/screenshots/vaultforge_search.png) | ![Graph](docs/screenshots/vaultforge_graph.png) |
+| **Search** — SQLite FTS5 over the compiled vault with facets | **Graph** — D3 force graph of concept clusters and entity links |
+| ![Notes](docs/screenshots/vaultforge_notes.png) | ![Ask Vault](docs/screenshots/vaultforge_ask.png) |
+| **Notes** — every compiled note, filterable by type | **Ask Vault** — chat the vault; LLM retrieves over your compiled notes, not raw docs |
+
 ## Web UI
 
 Start with `secondbrain serve --vault <path> --port <port>`.
