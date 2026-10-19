@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Brain logo" width="180">
+</p>
+
 # VaultForge
 
 **Local LLM-powered second brain / knowledge compiler.**
